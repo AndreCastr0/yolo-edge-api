@@ -10,12 +10,12 @@ import httpx
 import cv2
 
 
-from schemas import (
+from app.schemas import (
     PredictRequest, PredictResponse,
     BatchPredictRequest, BatchPredictResponse,
     HealthResponse, MetricsResponse, Detection
 )
-from model import load_model, get_default_model_name
+from app.model import load_model, get_default_model_name
 
 
 app = FastAPI(
