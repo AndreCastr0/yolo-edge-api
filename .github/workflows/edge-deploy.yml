@@ -139,6 +139,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Conecta à rede Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
       - name: Deploy via SSH com rollback automático
         uses: appleboy/ssh-action@v1
         with:
