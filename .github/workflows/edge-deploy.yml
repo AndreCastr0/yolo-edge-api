@@ -15,17 +15,50 @@ env:
 
 jobs:
 
-
-  # ── JOB 1: Testes unitários ───────────────────────────────
+  # ── JOB 1: Lint e testes unitários / smoke / integration ──
   test:
+    name: "Lint & Tests"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - run: pip install -r app/requirements.txt pytest ruff
-      - run: ruff check app/
-      - run: pytest tests/ -v
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Conecta ao Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+      - name: Configura Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Instalar dependências
+        run: |
+          pip install -r app/requirements.txt
+          pip install pytest ruff
+
+      - name: Download modelo para testes
+        run: |
+          pip install "dvc[ssh]"
+          mkdir -p ~/.ssh
+          echo "${{ secrets.RPI_SSH_KEY }}" | tr -d '\r' > ~/.ssh/dvc_key
+          chmod 600 ~/.ssh/dvc_key
+          dvc remote modify --local local_remote keyfile ~/.ssh/dvc_key
+          dvc pull
+
+      - name: Disponibiliza o modelo em /app/models (mesmo path usado no Docker)
+        run: |
+          sudo mkdir -p /app
+          sudo ln -sfn "$GITHUB_WORKSPACE/models" /app/models
+          ls -la /app/models
+
+      - name: Lint (ruff)
+        run: ruff check app/
+
+      - name: Testes automatizados
+        run: pytest tests/ -v --tb=short
 
 
   # ── JOB 2: Build multi-arch e push ───────────────────────
@@ -49,16 +82,35 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-
   # ── JOB 3: Quality gate do modelo ────────────────────────
   model-gate:
+    name: "Model Quality Gate"
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: pip install dvc ultralytics
-      - run: dvc pull
-      - run: python scripts/validate_model.py
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Conecta ao Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+      - name: Instala dependências
+        run: |
+          pip install ultralytics "dvc[ssh]"
+
+      - name: Download modelo via DVC
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.RPI_SSH_KEY }}" | tr -d '\r' > ~/.ssh/dvc_key
+          chmod 600 ~/.ssh/dvc_key
+          dvc remote modify --local local_remote keyfile ~/.ssh/dvc_key
+          dvc pull
+
+      - name: Quality Gate
+        run: |
+          python scripts/validate_model.py --threshold 0.50
 
 
   # ── JOB 4: Deploy no Raspberry Pi ────────────────────────
