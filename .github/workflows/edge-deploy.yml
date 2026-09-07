@@ -103,9 +103,16 @@ jobs:
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
+      - name: Configura Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
       - name: Instala dependências
         run: |
-          pip install ultralytics "dvc[ssh]"
+          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install ultralytics==8.2.0 "dvc[ssh]"
 
       - name: Download modelo via DVC
         run: |
@@ -116,6 +123,8 @@ jobs:
           dvc pull
 
       - name: Quality Gate
+        env:
+          TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD: "1"
         run: |
           python scripts/validate_model.py --threshold 0.50
 
