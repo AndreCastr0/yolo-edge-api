@@ -112,6 +112,7 @@ jobs:
       - name: Instala dependências
         run: |
           pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install numpy==1.26.4
           pip install ultralytics==8.2.0 "dvc[ssh]"
 
       - name: Download modelo via DVC
