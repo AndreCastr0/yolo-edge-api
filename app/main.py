@@ -1,7 +1,9 @@
 import base64
 import io
+import json
 import subprocess
 import time
+import uuid
 
 import cv2
 import httpx
@@ -19,12 +21,12 @@ from app.schemas import (
     PredictRequest,
     PredictResponse,
 )
-import json
-import uuid
+
 
 def log_event(event: str, level: str = "INFO", **kwargs):
     """Emite um evento estruturado em JSON para stdout."""
     import time
+
     record = {
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "level": level,
